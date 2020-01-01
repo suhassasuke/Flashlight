@@ -4,15 +4,11 @@ import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraManager;
-import android.os.Handler;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -35,9 +31,6 @@ public class MainActivity extends AppCompatActivity {
 
     @BindView(R.id.turn_off_on_light)
     ImageView TurnOffOnLight;
-
-    @BindView(R.id.main_background)
-    LinearLayout mainBackground;
 
     private CameraManager mCameraManager;
     private String mCameraId;
@@ -168,16 +161,14 @@ public class MainActivity extends AppCompatActivity {
 
     public void switchFlashLight() {
         try {
-            mCameraManager.setTorchMode(mCameraId, state);
             if (!state) {
-                TurnOffOnLight.setImageResource(R.mipmap.ic_light_on);
-                mainBackground.setBackgroundColor(getResources().getColor(R.color.colorBlack));
+                TurnOffOnLight.setImageResource(R.drawable.ic_brightness_high_black_24dp);
                 state = !state;
             } else {
-                TurnOffOnLight.setImageResource(R.mipmap.ic_light_off);
-                mainBackground.setBackgroundColor(getResources().getColor(R.color.colorWhite));
+                TurnOffOnLight.setImageResource(R.drawable.ic_brightness_low_black_24dp);
                 state = !state;
             }
+            mCameraManager.setTorchMode(mCameraId, state);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
