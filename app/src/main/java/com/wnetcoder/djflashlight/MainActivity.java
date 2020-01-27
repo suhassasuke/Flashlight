@@ -3,12 +3,17 @@ package com.wnetcoder.djflashlight;
 import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -41,6 +46,8 @@ public class MainActivity extends AppCompatActivity {
 
     final int REQUEST_PERMISSION = 0;
 
+    private static final int DRAW_OVER_OTHER_APP_PERMISSION = 123;
+
     String[] permission = {
 //            Manifest.permission.CAMERA,
             Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -65,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
         mCameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             mCameraId = mCameraManager.getCameraIdList()[0];
+            mCameraManager.setTorchMode(mCameraId, false);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -121,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
         if (grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             if (requestCode == REQUEST_PERMISSION) {
-                Log.d("permission","granted $$$$$$$$$$$$$$$$$$");
+                Log.d("permission", "granted $$$$$$$$$$$$$$$$$$");
             }
         }
     }
@@ -130,11 +138,57 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         checkPermission();
+        stopService(new Intent(MainActivity.this, FloatingWidgetService.class));
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // To prevent starting the service if the required permission is NOT granted.
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                //Permission is not available. Display error text.
+                errorToast();
+                finish();
+            }
+        }
+    }
+
+    private void errorToast() {
+        Toast.makeText(this, "Draw over other app permission not available. Can't start the application without the permission.", Toast.LENGTH_LONG).show();
+    }
+
+    private void askForSystemOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+
+            //If the draw over permission is not available to open the settings screen
+            //to grant the permission.
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, DRAW_OVER_OTHER_APP_PERMISSION);
+        }
     }
 
     @OnClick(R.id.turn_off_on_light)
     void onClickTurnOffOnLight() {
         switchFlashLight();
+    }
+
+    @OnClick(R.id.float_button)
+    void onClickFloatButton() {
+        //If the draw over permission is not available to open the settings screen
+        //to grant the permission.
+        if(Settings.canDrawOverlays(this)) {
+            Intent intent = new Intent(MainActivity.this,FloatingWidgetService.class);
+            intent.putExtra("flashState",state);
+            startService(intent);
+//            startService(new Intent(MainActivity.this, FloatingWidgetService.class));
+            finish();
+        }else{
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivityForResult(intent, DRAW_OVER_OTHER_APP_PERMISSION);
+        }
     }
 
     public void showNoFlashError() {
@@ -154,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
         if (ContextCompat.checkSelfPermission(this, permission[0])
                 == PackageManager.PERMISSION_DENIED || ContextCompat.checkSelfPermission(this, permission[1])
                 == PackageManager.PERMISSION_DENIED || ContextCompat.checkSelfPermission(this, permission[2])
-                == PackageManager.PERMISSION_DENIED ) {
+                == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.requestPermissions(this, permission, REQUEST_PERMISSION);
         }
     }
